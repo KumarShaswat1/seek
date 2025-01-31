@@ -66,7 +66,6 @@ public class TicketResponseController {
         }
     }
 
-    //    Update Reply for only agents
     @PutMapping("/{ticket-id}/response/{response-id}")
     public ResponseEntity<?> updateResponse(@PathVariable("ticket-id") long ticketId,
                                             @PathVariable("response-id") long responseId,
@@ -78,22 +77,17 @@ public class TicketResponseController {
             if (updatedText == null || updatedText.trim().isEmpty()) {
                 throw new IllegalArgumentException("Update text cannot be empty");
             }
-            TicketResponse updatedReply = ticketResponseService.updateTicketResponse(userId, ticketId, responseId, updatedText);
+            ticketResponseService.updateTicketResponse(userId, ticketId, responseId, updatedText);
 
             response.put("status", "success");
             response.put("message", "Reply updated successfully");
-            return ResponseEntity.status(HttpStatus.OK).body(response);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);  // 403 Forbidden
+            return buildErrorResponse(response, e.getMessage(), HttpStatus.FORBIDDEN);
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "Internal server error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
+            return buildErrorResponse(response, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 
     @DeleteMapping("/{ticket-id}/response/{response-id}")
     public ResponseEntity<?> deleteResponse(@PathVariable("ticket-id") long ticketId,
@@ -104,16 +98,11 @@ public class TicketResponseController {
             ticketResponseService.deleteTicketResponse(userId, ticketId, responseId);
             response.put("status", "success");
             response.put("message", "Reply deleted successfully");
-            return ResponseEntity.status(HttpStatus.OK).body(response);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);  // 403 Forbidden
-
+            return buildErrorResponse(response, e.getMessage(), HttpStatus.FORBIDDEN);
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "Internal server error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
+            return buildErrorResponse(response, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -126,25 +115,20 @@ public class TicketResponseController {
             if (statusUpdated) {
                 response.put("status", "success");
                 response.put("message", "Status changed successfully");
-                return ResponseEntity.status(HttpStatus.OK).body(response);
-            } else {
-                response.put("status", "error");
-                response.put("message", "Ticket not found");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);  // 404 Not Found
+                return ResponseEntity.ok(response);
             }
+            return buildErrorResponse(response, "Ticket not found", HttpStatus.NOT_FOUND);
         } catch (IllegalArgumentException e) {
-            response.put("status", "error");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);  // 403 Forbidden
+            return buildErrorResponse(response, e.getMessage(), HttpStatus.FORBIDDEN);
         } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "Internal server error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
+            return buildErrorResponse(response, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
     private ResponseEntity<Map<String, Object>> buildErrorResponse(Map<String, Object> response, String message, HttpStatus status) {
-        response.put("status", ControllerConstants.STATUS_ERROR);
+        response.put("status", "error");
         response.put("message", message);
         return ResponseEntity.status(status).body(response);
     }
+
 }

@@ -9,6 +9,7 @@ import com.example.TicketApp.services.TicketResponseService;
 import com.example.TicketApp.services.TicketService;
 import com.example.TicketApp.customErrors.InvalidRequestException;
 import com.example.TicketApp.customErrors.UserNotFoundException;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,15 +26,19 @@ import java.util.Map;
 @RestController
 @CrossOrigin("http://localhost:3000")
 @RequestMapping("/ticket")
+@AllArgsConstructor
 public class TicketController {
 
     private static final Logger logger = LoggerFactory.getLogger(TicketController.class);
 
-    @Autowired
     private TicketService ticketService;
+    private TicketResponseService ticketResponseService;
 
     @Autowired
-    private TicketResponseService ticketResponseService;
+    public TicketController(TicketResponseService ticketResponseService,TicketService ticketService) {
+        this.ticketResponseService = ticketResponseService;
+        this.ticketService=ticketService;
+    }
 
     @GetMapping("/search")
     public ResponseEntity<Map<String, Object>> searchTickets(

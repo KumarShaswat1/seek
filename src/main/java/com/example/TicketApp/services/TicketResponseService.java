@@ -101,52 +101,65 @@ public class TicketResponseService {
 
     public TicketResponse updateTicketResponse(long userId, long ticketId, long responseId, String updateText) {
         User user = userRespository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User  not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
 
         TicketResponse ticketResponse = ticketResponseRepository.findById(responseId)
-                .orElseThrow(() -> new TicketNotFoundException("Reply not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Reply not found"));
 
-        if (!ticketResponse.getUser ().equals(user)) {
-            throw new UnauthorizedAccessException("User  is not authorized to update this reply");
+        if (!ticketResponse.getUser().equals(user)) {
+            throw new IllegalArgumentException("User is not authorized to update this reply");
         }
 
         ticketResponse.setResponseText(updateText);
-        logger.info("Ticket response updated successfully for response ID: {}", responseId);
         return ticketResponseRepository.save(ticketResponse);
     }
 
     public void deleteTicketResponse(long userId, long ticketId, long responseId) {
         User user = userRespository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User  not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
 
         TicketResponse ticketResponse = ticketResponseRepository.findById(responseId)
-                .orElseThrow(() -> new TicketNotFoundException("Reply not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Reply not found"));
 
-        if (!ticketResponse.getUser ().equals(user)) {
-            throw new UnauthorizedAccessException("User  is not authorized to delete this reply");
+        if (!ticketResponse.getUser().equals(user)) {
+            throw new IllegalArgumentException("User is not authorized to delete this reply");
         }
 
         ticketResponseRepository.delete(ticketResponse);
-        logger.info("Ticket response deleted successfully for response ID: {}", responseId);
     }
-
     public boolean updateTicketResponseStatus(long userId, long ticketId) {
+        // Find the user by ID
         User user = userRespository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User  not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        // Ensure only agents can update the status
+        if (user.getRole() != User.Role.AGENT) {
+            throw new IllegalArgumentException("Access denied. Only agents can update the status.");
+        }
+
+        // Find the ticket by ID
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
 
-        // Logic to update the ticket response status
-        // This could involve checking the current status and updating it accordingly
+        // Ensure the user is the assigned agent for this ticket
+        if (ticket.getAgent() == null || !ticket.getAgent().equals(user)) {
+            throw new IllegalArgumentException("User is not authorized to update the status of this ticket.");
+        }
 
-        logger.info("Ticket response status updated successfully for ticket ID: {}", ticketId);
-        return true; // Return true if the update was successful
+        // Update ticket status to RESOLVED
+        ticket.setStatus(Ticket.Status.RESOLVED);
+        ticket.setResolvedAt(java.time.LocalDateTime.now());
+
+        // Save the updated ticket to the database
+        ticketRepository.save(ticket);
+
+        return true;
     }
+
 }
