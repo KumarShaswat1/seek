@@ -3,9 +3,14 @@ package com.example.TicketApp.controller;
 import com.example.TicketApp.DTO.SimpleTicketDTO;
 import com.example.TicketApp.DTO.TicketDTO;
 import com.example.TicketApp.DTO.TicketResponseDTO;
+import com.example.TicketApp.constants.ControllerConstants;
 import com.example.TicketApp.entity.Ticket;
 import com.example.TicketApp.services.TicketResponseService;
 import com.example.TicketApp.services.TicketService;
+import com.example.TicketApp.customErrors.InvalidRequestException;
+import com.example.TicketApp.customErrors.UserNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -16,12 +21,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 @RestController
 @CrossOrigin("http://localhost:3000")
 @RequestMapping("/ticket")
 public class TicketController {
+
+    private static final Logger logger = LoggerFactory.getLogger(TicketController.class);
+
     @Autowired
     private TicketService ticketService;
 
@@ -34,24 +41,28 @@ public class TicketController {
             @RequestParam String role,
             @RequestParam String status,
             @RequestParam String category,
-            @RequestParam(defaultValue = "0") int page, // Default to the first page
-            @RequestParam(defaultValue = "10") int size // Default to 10 items per page
-    ) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
         Map<String, Object> response = new HashMap<>();
         try {
-            // Fetch paginated tickets
             Page<SimpleTicketDTO> paginatedTickets = ticketService.getFilteredTickets(userId, role, status, category, page, size);
-            response.put("status", "success");
+            response.put("status", ControllerConstants.STATUS_SUCCESS);
             response.put("data", Collections.singletonMap("tickets", paginatedTickets.getContent()));
             response.put("totalElements", paginatedTickets.getTotalElements());
             response.put("totalPages", paginatedTickets.getTotalPages());
             return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            response.put("status", "error");
+        } catch (UserNotFoundException e) {
+            response.put("status", ControllerConstants.STATUS_ERROR);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (InvalidRequestException e) {
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         } catch (Exception e) {
-            response.put("status", "error");
+            logger.error("Error fetching tickets: {}", e.getMessage());
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", "Internal server error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
@@ -61,29 +72,31 @@ public class TicketController {
     public ResponseEntity<Map<String, Object>> searchTicket(
             @PathVariable long userId,
             @PathVariable long ticketId,
-            @RequestParam(defaultValue = "0") int page, // Default to the first page
-            @RequestParam(defaultValue = "10") int size // Default to 10 items per page
-    ) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Fetch the TicketDTO using the service method
             TicketDTO ticketDTO = ticketService.searchTicket(userId, ticketId, page, size);
-            response.put("status", "success");
+            response.put("status", ControllerConstants.STATUS_SUCCESS);
             response.put("data", ticketDTO);
             return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            response.put("status", "error");
+        } catch (UserNotFoundException e) {
+            response.put("status", ControllerConstants.STATUS_ERROR);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (InvalidRequestException e) {
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         } catch (Exception e) {
-            response.put("status", "error");
+            logger.error("Error fetching ticket: {}", e.getMessage());
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", "Internal server error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-
 
     @GetMapping("/count/search")
     public ResponseEntity<Map<String, Object>> getTicketCount(@RequestParam long userId,
@@ -91,52 +104,50 @@ public class TicketController {
                                                               @RequestParam String category) {
         Map<String, Object> response = new HashMap<>();
 
+
         try {
             Map<String, Long> count = ticketService.getCountActiveResolved(userId, role, category);
-            response.put("status", "success");
+            response.put("status", ControllerConstants.STATUS_SUCCESS);
             response.put("data", count);
             return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-
-            response.put("status", "error");
+        } catch (UserNotFoundException e) {
+            response.put("status", ControllerConstants.STATUS_ERROR);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (InvalidRequestException e) {
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-
         } catch (Exception e) {
-            // Handle unexpected server errors
-            response.put("status", "error");
+            logger.error("Error fetching ticket counts: {}", e.getMessage());
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", "Internal server error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-
-
 
     @GetMapping("/{ticket-id}/response")
     public ResponseEntity<?> getAllTicketResponses(@PathVariable("ticket-id") long ticketId,
                                                    @RequestParam long userId) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // Call the service to get all replies for the given ticketId
             List<TicketResponseDTO> replies = ticketService.getAllTicketResponses(userId, ticketId);
             if (replies.isEmpty()) {
-                response.put("status", "error");
+                response.put("status", ControllerConstants.STATUS_ERROR);
                 response.put("message", "Ticket not found");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);  // 404 Not Found
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
-            // Return success response with replies
-            response.put("status", "success");
-            response.put("message", "Replies fetched successfully");
+            response.put("status", ControllerConstants.STATUS_SUCCESS);
+            response.put("message", ControllerConstants.MESSAGE_REPLIES_FETCHED);
             response.put("data", Collections.singletonMap("replies", replies));
-            return ResponseEntity.status(HttpStatus.OK).body(response);  // 200 OK
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            response.put("status", "error");
+            logger.error("Error fetching ticket responses: {}", e.getMessage());
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", "Internal server error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
-    private static final Logger logger = Logger.getLogger(TicketService.class.getName());
 
     @PostMapping
     public ResponseEntity<?> createTicket(@RequestParam long userId,
@@ -150,23 +161,23 @@ public class TicketController {
             }
 
             Ticket createdTicket = ticketService.createTicket(userId, category, description);
-            response.put("status", "success");
+            response.put("status", ControllerConstants.STATUS_SUCCESS);
             Map<String, Object> data = new HashMap<>();
             data.put("ticketId", createdTicket.getTicketId());
-            data.put("message", "Ticket created successfully");
+            data.put("message", ControllerConstants.MESSAGE_TICKET_CREATED);
             response.put("data", data);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
-            logger.severe("Bad request: " + e.getMessage());
-            response.put("status", "error");
+        } catch (InvalidRequestException e) {
+            logger.error("Bad request: {}", e.getMessage());
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);  // 400 Bad Request
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         } catch (Exception e) {
-            logger.severe("Internal server error: " + e.getMessage());
-            response.put("status", "error");
+            logger.error("Internal server error: {}", e.getMessage());
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", "Internal server error");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }

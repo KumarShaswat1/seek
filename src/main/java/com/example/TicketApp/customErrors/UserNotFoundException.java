@@ -1,4 +1,4 @@
-package com.example.TicketApp.CustomErrors;
+package com.example.TicketApp.customErrors;
 
 public class UserNotFoundException extends RuntimeException {
     public UserNotFoundException(String message) {

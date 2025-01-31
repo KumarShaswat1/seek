@@ -1,4 +1,4 @@
-package com.example.TicketApp.CustomErrors;
+package com.example.TicketApp.customErrors;
 
 public class UserNotAuthorizedException extends RuntimeException {
     public UserNotAuthorizedException(String message) {

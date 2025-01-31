@@ -1,9 +1,12 @@
 package com.example.TicketApp.controller;
 
-import com.example.TicketApp.CustomErrors.BookingNotFoundException;
+import com.example.TicketApp.customErrors.BookingNotFoundException;
 import com.example.TicketApp.services.BookingService;
-import com.example.TicketApp.CustomErrors.UserNotAuthorizedException;
-import com.example.TicketApp.CustomErrors.UserNotFoundException;
+import com.example.TicketApp.customErrors.UserNotAuthorizedException;
+import com.example.TicketApp.customErrors.UserNotFoundException;
+import com.example.TicketApp.constants.ControllerConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +20,14 @@ import java.util.Map;
 @RequestMapping("/booking")
 public class BookingController {
 
+    private static final Logger logger = LoggerFactory.getLogger(BookingController.class);
+
+    private final BookingService bookingService;
+
     @Autowired
-    private BookingService bookingService;
+    public BookingController(BookingService bookingService) {
+        this.bookingService = bookingService;
+    }
 
     @GetMapping("/{booking-id}/validate")
     public ResponseEntity<Map<String, Object>> validateBooking(
@@ -29,19 +38,20 @@ public class BookingController {
 
         try {
             boolean isValid = bookingService.validateBooking(userId, bookingId);
-            response.put("status", "success");
+            response.put("status", ControllerConstants.STATUS_SUCCESS);
             response.put("message", "Booking is valid");
             return ResponseEntity.ok(response);  // 200 OK
         } catch (UserNotFoundException | BookingNotFoundException e) {
-            response.put("status", "error");
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);  // 404 Not Found
         } catch (UserNotAuthorizedException e) {
-            response.put("status", "error");
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);  // 403 Forbidden
         } catch (Exception e) {
-            response.put("status", "error");
+            logger.error("Error in validateBooking: {}", e.getMessage(), e);
+            response.put("status", ControllerConstants.STATUS_ERROR);
             response.put("message", "Internal server error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
         }

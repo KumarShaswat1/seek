@@ -1,10 +1,17 @@
 package com.example.TicketApp.controller;
 
 import com.example.TicketApp.DTO.TicketResponseDTO;
+import com.example.TicketApp.customErrors.UserNotAuthorizedException;
 import com.example.TicketApp.entity.TicketResponse;
 import com.example.TicketApp.services.TicketResponseService;
+import com.example.TicketApp.constants.ControllerConstants;
+import com.example.TicketApp.customErrors.InvalidRequestException;
+import com.example.TicketApp.customErrors.UnauthorizedAccessException;
+import com.example.TicketApp.customErrors.TicketNotFoundException;
+import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,14 +19,18 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-
 @RestController
 @CrossOrigin("http://localhost:3000")
 @RequestMapping("/ticket-response")
 public class TicketResponseController {
 
+    private final TicketResponseService ticketResponseService;
+    private static final Logger logger = LoggerFactory.getLogger(TicketResponseController.class);
+
     @Autowired
-    private TicketResponseService ticketResponseService;
+    public TicketResponseController(TicketResponseService ticketResponseService) {
+        this.ticketResponseService = ticketResponseService;
+    }
 
     // Endpoint to create a new reply (ticket response)
     @PostMapping("/{ticket-id}")
@@ -130,5 +141,10 @@ public class TicketResponseController {
             response.put("message", "Internal server error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);  // 500 Internal Server Error
         }
+    }
+    private ResponseEntity<Map<String, Object>> buildErrorResponse(Map<String, Object> response, String message, HttpStatus status) {
+        response.put("status", ControllerConstants.STATUS_ERROR);
+        response.put("message", message);
+        return ResponseEntity.status(status).body(response);
     }
 }

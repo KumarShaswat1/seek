@@ -1,4 +1,4 @@
-package com.example.TicketApp.CustomErrors;
+package com.example.TicketApp.customErrors;
 
 public class BookingNotFoundException extends RuntimeException {
     public BookingNotFoundException(String message) {
